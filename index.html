@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>羽球分組</title>
+<meta name="theme-color" content="#0f1419">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="羽球分組">
+<style>
+:root { --bg:#0f1419; --card:#1a2332; --accent:#3b82f6; --text:#e2e8f0; --text-dim:#94a3b8; --border:#334155; }
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:-apple-system,BlinkMacSystemFont,"Noto Sans TC",sans-serif; background:var(--bg); color:var(--text); padding:16px; max-width:900px; margin:0 auto; line-height:1.6; }
+h1 { font-size:1.6rem; margin-bottom:8px; }
+.hidden { display:none !important; }
+.card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:16px; }
+h2 { font-size:1.1rem; margin-bottom:12px; }
+h3 { font-size:1rem; margin:12px 0 8px; color:#cbd5e1; }
+input, select, button, textarea { font-family:inherit; font-size:1rem; }
+input, select, textarea { width:100%; background:#0f172a; border:1px solid var(--border); color:var(--text); border-radius:8px; padding:10px 12px; margin-bottom:10px; }
+button { background:var(--accent); color:#fff; border:none; border-radius:8px; padding:10px 16px; cursor:pointer; font-weight:500; }
+button.secondary { background:#334155; }
+button.small { padding:6px 10px; font-size:0.85rem; }
+.weekday-btns { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; }
+.weekday-btns button { flex:1; min-width:50px; padding:8px; background:#1e293b; }
+.weekday-btns button.active { background:var(--accent); }
+.groups-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:8px; }
+.tag { background:#334155; padding:6px 10px; border-radius:20px; font-size:0.9rem; }
+.remove { cursor:pointer; margin-left:6px; color:#ef4444; }
+.mode-switch { display:flex; gap:8px; margin-bottom:12px; }
+.mode-switch button { flex:1; background:#1e293b; }
+.mode-switch button.active { background:var(--accent); }
+.row { display:flex; gap:8px; flex-wrap:wrap; }
+.row > * { flex:1; min-width:120px; }
+.tap-area { background:#1e293b; border-radius:12px; padding:40px 20px; text-align:center; cursor:pointer; margin:16px 0; }
+.big-group { font-size:3rem; font-weight:bold; }
+</style>
+<link rel="manifest" href="manifest.json"><meta name="theme-color" content="#0f172a"><link rel="apple-touch-icon" href="icon-192.png"></head>
+<body>
+<h1>羽球分組</h1>
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+  <p style="color:var(--text-dim); margin:0;">選擇功能開始</p>
+  <button id="menuBtn" onclick="toggleMenu()" style="background:none; border:none; color:#fff; font-size:1.6rem;">☰</button>
+</div>
+
+<div id="sideMenu" class="hidden" style="background:#1a2332; border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:16px;">
+  <button onclick="switchMenu('home')" style="display:block; width:100%; text-align:left; margin-bottom:8px; background:#334155;">首頁</button>
+  <button onclick="switchMenu('group')" style="display:block; width:100%; text-align:left; margin-bottom:8px; background:#334155;">分組</button>
+  <button onclick="switchMenu('racket')" style="display:block; width:100%; text-align:left; background:#334155;">自己</button>
+</div>
+
+<!-- Home -->
+<div id="menu-home">
+  <div class="card">
+    <h2>歡迎使用羽球分組</h2>
+    <p>點右上角 ☰ 選擇功能</p>
+  </div>
+</div>
+
+<!-- Group -->
+<div id="menu-group" class="hidden">
+  <div style="margin-bottom:12px;">
+    <label>日期</label>
+    <input type="date" id="groupDate">
+  </div>
+  <div class="mode-switch">
+    <button id="btnManual" class="active" onclick="switchMode('manual')">手動輸入</button>
+    <button id="btnQuick" onclick="switchMode('quick')">快速分組</button>
+    <button id="btnRotate" onclick="switchMode('rotate')">單人輪轉</button>
+  </div>
+
+  <div id="mode-manual">
+    <div class="card">
+      <h2>1. 人員名單</h2>
+      <div class="row">
+        <input type="text" id="nameInput" placeholder="輸入姓名後按 Enter 或點新增">
+        <select id="genderInput" style="flex:0 0 100px;">
+          <option value="">性別</option>
+          <option value="男">男</option>
+          <option value="女">女</option>
+        </select>
+      </div>
+      <div class="row" style="margin-top:8px; align-items:center; gap:8px;">
+        <input type="checkbox" id="useAbility" onchange="const s=document.getElementById('abilityInput'); s.disabled=!this.checked; s.style.opacity=this.checked?1:0.5;" style="flex:0 0 auto;">
+        <span style="font-size:0.9rem; flex:0 0 auto;">等級</span>
+        <select id="abilityInput" style="flex:0 0 110px; opacity:0.5;" disabled>
+          <option value="">選擇</option>
+          <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>
+          <option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option>
+          <option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option>
+          <option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option>
+        </select>
+        <button onclick="addPerson()" style="flex:0 0 auto; margin-left:auto;">新增</button>
+      </div>
+      <div id="peopleList" class="people-list" style="margin-top:8px;"></div>
+      <div class="row" style="margin-top:8px;">
+        <button class="secondary small" onclick="clearPeople()">清空名單</button>
+        <button class="secondary small" onclick="loadSample()">載入範例</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>2. 分組設定</h2>
+      <div class="row">
+        <div style="flex:1;"><label>分成幾組</label><input type="number" id="numGroups" placeholder="例如 3" min="1" value="3"></div>
+        <div style="flex:1;"><label>每組幾人</label><input type="number" id="peoplePerGroup" placeholder="例如 2" min="2" value="2"></div>
+      </div>
+      <div style="margin-top:8px;">
+        <label>一次要分幾輪（輪次）</label>
+        <input type="number" id="numRounds" placeholder="例如 3" min="1" value="1">
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>3. 特殊限制</h2>
+      <h3>不能同組（硬限制）</h3>
+      <div class="row">
+        <select id="cannotA"></select>
+        <select id="cannotB"></select>
+        <button onclick="addCannot()" style="flex:0 0 auto;">新增</button>
+      </div>
+      <div id="cannotList" class="constraints"></div>
+
+      <h3 style="margin-top:12px;">希望同組</h3>
+      <div class="row">
+        <select id="hopeA"></select>
+        <select id="hopeB"></select>
+        <button onclick="addHope()" style="flex:0 0 auto;">新增</button>
+      </div>
+      <div id="hopeList" class="constraints"></div>
+
+      <div style="margin:16px 0 8px; display:flex; align-items:center; gap:10px; flex-wrap:nowrap;">
+        <input type="checkbox" id="noFemalePair" style="flex:0 0 auto; width:20px; height:20px;">
+        <span style="white-space:normal; writing-mode:horizontal-tb;">勾選後避免兩位女性同組</span>
+      </div>
+
+      <div style="margin:8px 0; display:flex; align-items:center; gap:10px; flex-wrap:nowrap;">
+        <input type="checkbox" id="memoryMode" onchange="toggleMemory()" style="flex:0 0 auto; width:20px; height:20px;">
+        <span style="white-space:normal; writing-mode:horizontal-tb;">同組過不能再同組</span>
+      </div>
+      <div id="memoryInfo" style="font-size:0.85rem; color:var(--accent); margin:4px 0 8px 30px; min-height:1.2em;"></div>
+
+      <div style="margin:8px 0; display:flex; align-items:center; gap:10px; flex-wrap:nowrap;">
+        <input type="checkbox" id="balanceLevel" style="flex:0 0 auto; width:20px; height:20px;">
+        <span style="white-space:normal; writing-mode:horizontal-tb;">等級平衡（每組平均等級接近）</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>4. 分組結果</h2>
+      <div class="row">
+        <button onclick="generate()">開始分組</button>
+        <button class="secondary" onclick="generateAgain()">再分一次</button>
+      </div>
+      <div id="result" style="margin-top:12px;"></div>
+      <div id="manualFirstArea" style="margin-top:8px;"></div>
+      <div class="row" style="margin-top:8px;">
+        <button class="secondary small" onclick="clearResult()">清除結果</button>
+        <button class="secondary small" onclick="saveManualToHistory()">儲存本次到歷史</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>5. 歷史紀錄</h2>
+      <div id="manualHistory"></div>
+      <button class="secondary small" onclick="clearManualHistory()" style="margin-top:8px;">清除所有歷史</button>
+    </div>
+  </div>
+
+  <div id="mode-quick" class="hidden">
+    <div class="card" id="quickSetup">
+      <h2>快速分組</h2>
+      <div class="row">
+        <div><label>總人數</label><input type="number" id="quickTotal" value="6" min="2"></div>
+        <div><label>每組幾人</label><input type="number" id="quickPerGroup" value="2" min="2"></div>
+      </div>
+      <button onclick="startQuick()">開始</button>
+    </div>
+    <div class="card hidden" id="quickReveal">
+      <div id="curtainArea" style="position:relative; height:200px; background:#1e293b; border-radius:12px; overflow:hidden; margin:16px 0;">
+        <div id="groupDisplay" style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; visibility:hidden;">
+          <div class="big-group" id="quickGroup" style="font-size:3rem; font-weight:bold;">A</div>
+          <div id="quickHint" style="margin-top:8px;">組</div>
+        </div>
+        <div id="curtain" style="position:absolute; inset:0; background:#1e293b; display:flex; align-items:center; justify-content:center; font-size:1.2rem; color:var(--text-dim); cursor:pointer; z-index:2;" onclick="pullCurtain()">
+          點一下確認組別
+        </div>
+      </div>
+      <div id="confirmArea" class="hidden" style="text-align:center; margin-top:12px;">
+        <button onclick="confirmNext()">確認並下一個</button>
+      </div>
+      <div id="quickStatus" style="text-align:center; color:var(--text-dim); margin-top:8px;"></div>
+      <button class="secondary" onclick="resetQuick()" style="margin-top:12px;">重新開始</button>
+    </div>
+  </div>
+
+  <div id="mode-rotate" class="hidden">
+    <div class="card">
+      <h2>單人輪轉</h2>
+      <div class="row">
+        <input type="text" id="rName" placeholder="姓名" style="flex:1;">
+        <select id="rGender" style="flex:0 0 110px;">
+          <option value="">性別</option>
+          <option value="男">男</option>
+          <option value="女">女</option>
+        </select>
+      </div>
+      <div class="row" style="margin-top:8px; align-items:center; gap:8px;">
+        <input type="checkbox" id="useRotateLevel" onchange="const s=document.getElementById('rLevel'); s.disabled=!this.checked; s.style.opacity=this.checked?1:0.5;" style="flex:0 0 auto;">
+        <span style="font-size:0.9rem; flex:0 0 auto;">等級</span>
+        <select id="rLevel" style="flex:0 0 110px; opacity:0.5;" disabled>
+          <option value="">選擇</option>
+          <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>
+          <option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option>
+          <option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option>
+          <option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option>
+        </select>
+        <button onclick="addRotatePerson()" style="flex:0 0 auto; margin-left:auto;">新增</button>
+      </div>
+      <div id="rotatePeopleList" class="people-list"></div>
+      <div class="row" style="margin-top:8px;">
+        <div><label>分成幾組</label><input type="number" id="rGroups" value="3" min="1"></div>
+      </div>
+      <button onclick="confirmRotate()">確認分組</button>
+      <div id="rotateResult" style="margin-top:12px;"></div>
+      <div class="row" style="margin-top:12px;">
+        <button onclick="doRotate('cw')">順時鐘</button>
+        <button onclick="doRotate('ccw')">逆時鐘</button>
+      </div>
+      <div id="rotateFirst" style="margin-top:8px;"></div>
+      <div class="card" style="margin-top:12px;">
+        <h3>單人輪轉紀錄</h3>
+        <div id="rotateHistoryList"></div>
+      </div>
+    </div>
+  </div>
+  <div class="card" id="quickHistoryCard" style="display:none;">
+    <h2>快速分組紀錄</h2>
+    <div id="quickHistoryList"></div>
+  </div>
+  <div class="card">
+    <h2>手動分組紀錄</h2>
+    <div id="historyList"></div>
+  </div>
+</div>
+
+<!-- Racket -->
+<div id="menu-racket" class="hidden">
+  <div class="card">
+    <h2>我的球拍</h2>
+    <input type="text" id="racketName" placeholder="球拍名稱">
+    <div class="row">
+      <div>
+        <label>規格（重量）</label>
+        <select id="racketWeight">
+          <option value="">選擇</option>
+          <option value="3U">3U</option>
+          <option value="4U">4U</option>
+          <option value="5U">5U</option>
+          <option value="6U">6U</option>
+        </select>
+      </div>
+      <div>
+        <label>規格（握把）</label>
+        <select id="racketGrip">
+          <option value="">選擇</option>
+          <option value="G2">G2</option>
+          <option value="G3">G3</option>
+          <option value="G4">G4</option>
+          <option value="G5">G5</option>
+          <option value="G6">G6</option>
+        </select>
+      </div>
+    </div>
+    <button onclick="addRacket()">新增球拍</button>
+    <div id="racketList" style="margin-top:12px;"></div>
+  </div>
+</div>
+
+<script>
+let historyRecords = [];
+
+function saveHistory(type, groups, firstMatch) {
+  const date = document.getElementById("groupDate")?.value || new Date().toISOString().slice(0,10);
+  const day = selectedDay || "";
+  const record = { date, day, type, groups, firstMatch: firstMatch || "", time: Date.now() };
+  if (type === "快速分組") {
+    if (!window.quickHistory) window.quickHistory = [];
+    window.quickHistory.unshift(record);
+    if (window.quickHistory.length > 20) window.quickHistory.pop();
+    renderQuickHistory();
+  } else if (type === "單人輪轉") {
+    if (!window.rotateHistory) window.rotateHistory = [];
+    window.rotateHistory.unshift(record);
+    if (window.rotateHistory.length > 20) window.rotateHistory.pop();
+    renderRotateHistory();
+  } else {
+    historyRecords.unshift(record);
+    if (historyRecords.length > 20) historyRecords.pop();
+    renderHistory();
+  }
+}
+
+function renderQuickHistory() {
+  const el = document.getElementById("quickHistoryList");
+  const card = document.getElementById("quickHistoryCard");
+  if (!el || !window.quickHistory) return;
+  card.style.display = window.quickHistory.length ? "" : "none";
+  el.innerHTML = window.quickHistory.map(r =>
+    `<div class="card" style="margin-bottom:8px; padding:10px;">
+      <div style="font-size:0.85rem; color:var(--text-dim);">${r.date} ${r.day}</div>
+      <div>${r.groups.map(g => Array.isArray(g) ? g.join("、") : g).join(" | ")}</div>
+      ${r.firstMatch ? `<div style="margin-top:4px; color:var(--accent);">${r.firstMatch}</div>` : ""}
+    </div>`
+  ).join("");
+}
+
+function renderRotateHistory() {
+  const el = document.getElementById("rotateHistoryList");
+  if (!el || !window.rotateHistory) return;
+  el.innerHTML = window.rotateHistory.map(r =>
+    `<div class="card" style="margin-bottom:8px; padding:10px;">
+      <div style="font-size:0.85rem; color:var(--text-dim);">${r.date} ${r.day}</div>
+      <div>${r.groups.map(g => Array.isArray(g) ? g.join("、") : g).join(" | ")}</div>
+      ${r.firstMatch ? `<div style="margin-top:4px; color:var(--accent);">${r.firstMatch}</div>` : ""}
+    </div>`
+  ).join("");
+}
+let people = [];
+let rackets = [];
+let selectedDay = "";
+let rotateGroups = [];
+let cannotPairs = [];
+let hopePairs = [];
+let historyPairs = [];
+let memoryEnabled = false;
+let quickAssignments = [];
+let quickIndex = 0;
+
+let uploadedPhotos = [];
+
+function toggleMenu() { document.getElementById("sideMenu").classList.toggle("hidden"); }
+
+function switchMenu(menu) {
+  document.getElementById("sideMenu").classList.add("hidden");
+  document.getElementById("menu-home").classList.toggle("hidden", menu !== "home");
+  document.getElementById("menu-group").classList.toggle("hidden", menu !== "group");
+  document.getElementById("menu-racket").classList.toggle("hidden", menu !== "racket");
+  if (menu === "racket") renderRackets();
+  if (menu === "group") updateSelects();
+}
+
+function switchMode(mode) {
+  document.getElementById("btnManual").classList.toggle("active", mode === "manual");
+  document.getElementById("btnQuick").classList.toggle("active", mode === "quick");
+  document.getElementById("btnRotate").classList.toggle("active", mode === "rotate");
+  document.getElementById("mode-manual").classList.toggle("hidden", mode !== "manual");
+  document.getElementById("mode-quick").classList.toggle("hidden", mode !== "quick");
+  document.getElementById("mode-rotate").classList.toggle("hidden", mode !== "rotate");
+}
+
+function setWeekday(btn) {
+  document.querySelectorAll("#weekdayBtns button").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  selectedDay = btn.dataset.day;
+}
+
+function toggleAbility() {
+  document.getElementById("abilityInput").style.display = document.getElementById("useAbility").checked ? "" : "none";
+}
+
+function updateSelects() {
+  const opts = people.map(p => `<option value="${p.name}">${p.name}</option>`).join("");
+  ["cannotA","cannotB","hopeA","hopeB"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = `<option value="">選擇</option>${opts}`;
+  });
+}
+
+function addPerson() {
+  const name = document.getElementById("nameInput").value.trim();
+  if (!name) return;
+  if (people.find(p => p.name === name)) { alert("姓名已存在"); return; }
+  const gender = document.getElementById("genderInput").value;
+  const ability = document.getElementById("useAbility").checked ? document.getElementById("abilityInput").value : "";
+  people.push({name, gender, ability});
+  document.getElementById("nameInput").value = "";
+  renderPeople();
+  updateSelects();
+}
+
+function renderPeople() {
+  document.getElementById("peopleList").innerHTML = people.map((p,i) =>
+    `<span class="tag">${p.name}${p.gender?" ("+p.gender+")":""}${p.ability?" ["+p.ability+"]":""} <span class="remove" onclick="people.splice(${i},1);renderPeople();updateSelects();">×</span></span>`
+  ).join("");
+}
+
+function addCannot() {
+  const a = document.getElementById("cannotA").value;
+  const b = document.getElementById("cannotB").value;
+  if (!a || !b || a === b) return;
+  cannotPairs.push({a, b});
+  renderConstraints();
+}
+
+function addHope() {
+  const a = document.getElementById("hopeA").value;
+  const b = document.getElementById("hopeB").value;
+  if (!a || !b || a === b) return;
+  hopePairs.push({a, b});
+  renderConstraints();
+}
+
+function renderConstraints() {
+  document.getElementById("cannotList").innerHTML = cannotPairs.map((p,i) =>
+    `<span class="tag">${p.a} × ${p.b} <span class="remove" onclick="cannotPairs.splice(${i},1);renderConstraints();">×</span></span>`
+  ).join("");
+  document.getElementById("hopeList").innerHTML = hopePairs.map((p,i) =>
+    `<span class="tag">${p.a} ↔ ${p.b} <span class="remove" onclick="hopePairs.splice(${i},1);renderConstraints();">×</span></span>`
+  ).join("");
+}
+
+function hasConflict(group) {
+  const names = group.map(p => p.name);
+  if (document.getElementById("noFemalePair")?.checked) {
+    const females = group.filter(p => p.gender === "女");
+    if (females.length > 1) return true;
+  }
+  for (const pair of cannotPairs) {
+    if (names.includes(pair.a) && names.includes(pair.b)) return true;
+  }
+  if (memoryEnabled) {
+    for (const pair of historyPairs) {
+      if (names.includes(pair.a) && names.includes(pair.b)) return true;
+    }
+  }
+  return false;
+}
+
+let manualHistory = [];
+let currentManualResult = null;
+let currentManualFirst = "";
+
+function generate() {
+  if (people.length < 2) { alert("請先新增人員"); return; }
+  const groups = parseInt(document.getElementById("numGroups").value) || 0;
+  const per = parseInt(document.getElementById("peoplePerGroup").value) || 0;
+  const rounds = parseInt(document.getElementById("numRounds").value) || 1;
+  const useBalance = document.getElementById("balanceLevel")?.checked;
+  if (!groups && !per) { alert("請設定分組方式"); return; }
+  const numGroups = groups || Math.ceil(people.length / per);
+
+  let allRounds = [];
+  for (let r = 0; r < rounds; r++) {
+    let attempts = 0;
+    let result;
+    let best = null;
+    let bestScore = Infinity;
+    do {
+      const shuffled = [...people].sort(() => Math.random() - 0.5);
+      result = Array.from({length:numGroups}, () => []);
+      shuffled.forEach((p,i) => result[i % numGroups].push(p));
+      attempts++;
+      if (useBalance && !result.some(hasConflict)) {
+        const avgs = result.map(g => g.reduce((s,p) => s + (p.ability||0), 0) / (g.length||1));
+        const score = Math.max(...avgs) - Math.min(...avgs);
+        if (score < bestScore) { bestScore = score; best = result.map(g => [...g]); }
+        if (score < 3 || attempts > 80) break;
+      }
+    } while (result.some(hasConflict) && attempts < 150);
+    if (useBalance && best) result = best;
+    if (attempts >= 150 && result.some(hasConflict)) { 
+      alert("已分到不能再分\\n請取消勾選「同組過不能再同組」，再重新勾選後按開始分組"); 
+      return; 
+    }
+    allRounds.push(result);
+    if (memoryEnabled) {
+      result.forEach(g => {
+        for (let i = 0; i < g.length; i++) for (let j = i+1; j < g.length; j++) {
+          historyPairs.push({a:g[i].name, b:g[j].name});
+        }
+      });
+    }
+  }
+
+  currentManualResult = allRounds;
+  let html = "";
+  allRounds.forEach((result, ri) => {
+    html += `<div style="margin-bottom:16px;"><strong>第 ${ri+1} 輪</strong><div class="groups-grid" style="margin-top:8px;">`;
+    result.forEach((g, gi) => {
+      const avg = g.length ? (g.reduce((s,p) => s + (p.ability||0), 0) / g.length).toFixed(1) : 0;
+      html += `<div class="card" style="margin:0; padding:10px;"><strong>第 ${gi+1} 組 (${g.length}人)</strong>${useBalance ? ` <span style="color:var(--accent);">均${avg}</span>` : ""}<br>${g.map(p => p.name + (p.ability ? " ["+p.ability+"]" : "")).join("<br>")}</div>`;
+    });
+    html += `</div></div>`;
+  });
+  document.getElementById("result").innerHTML = html;
+
+  const labels = Array.from({length:numGroups}, (_,i) => String.fromCharCode(65+i));
+  const shuffledFirst = [...labels].sort(() => Math.random() - 0.5);
+  currentManualFirst = labels.length >= 2 ? `先開打：${shuffledFirst[0]} 組 vs ${shuffledFirst[1]} 組` : "";
+  document.getElementById("manualFirstArea").innerHTML = `<button class="secondary small" onclick="showManualFirst()">顯示哪組先打</button><div id="manualFirstText" class="hidden" style="margin-top:8px; padding:8px; background:#1e293b; border-radius:8px;"></div>`;
+
+  updateMemoryInfo();
+  saveManualToHistory(true);
+}
+
+function showManualFirst() {
+  const el = document.getElementById("manualFirstText");
+  if (el) {
+    el.classList.toggle("hidden");
+    el.textContent = currentManualFirst || "組數不足";
+  }
+}
+
+function generateAgain() {
+  generate();
+}
+
+function clearResult() {
+  document.getElementById("result").innerHTML = "";
+  document.getElementById("manualFirstArea").innerHTML = "";
+  currentManualResult = null;
+  currentManualFirst = "";
+}
+
+function saveManualToHistory(silent) {
+  if (!currentManualResult) { if (!silent) alert("請先分組"); return; }
+  const date = document.getElementById("groupDate")?.value || new Date().toISOString().slice(0,10);
+  const record = {
+    date,
+    day: selectedDay || "",
+    rounds: currentManualResult.map(r => r.map(g => g.map(p => p.name))),
+    firstMatch: currentManualFirst,
+    time: Date.now()
+  };
+  manualHistory.unshift(record);
+  if (manualHistory.length > 30) manualHistory.pop();
+  renderManualHistory();
+  if (!silent) alert("已儲存到歷史");
+}
+
+function renderManualHistory() {
+  const el = document.getElementById("manualHistory");
+  if (!el) return;
+  if (!manualHistory.length) { el.innerHTML = `<div style="color:var(--text-dim);">尚無歷史紀錄</div>`; return; }
+  el.innerHTML = manualHistory.map(r => `
+    <div class="card" style="margin-bottom:8px; padding:10px;">
+      <div style="font-size:0.85rem; color:var(--text-dim);">${r.date} ${r.day}</div>
+      ${r.rounds.map((round, i) => `<div style="margin-top:4px;"><strong>第${i+1}輪</strong>：${round.map(g => g.join("、")).join(" | ")}</div>`).join("")}
+      ${r.firstMatch ? `<div style="margin-top:4px; color:var(--accent);">${r.firstMatch}</div>` : ""}
+    </div>
+  `).join("");
+}
+
+function clearManualHistory() {
+  if (confirm("確定清除所有歷史？")) {
+    manualHistory = [];
+    renderManualHistory();
+  }
+}
+
+function updateMemoryInfo() {
+  const el = document.getElementById("memoryInfo");
+  if (el) el.textContent = memoryEnabled ? `已記住 ${historyPairs.length} 組。分到不能再分時，取消勾選再重新勾選即可清除記憶` : "勾選後，分組過的人下次不會再同組";
+}
+
+function toggleMemory() {
+  memoryEnabled = document.getElementById("memoryMode").checked;
+  if (!memoryEnabled) {
+    historyPairs = [];
+  }
+  updateMemoryInfo();
+}
+
+function showFirst(btn) {
+  const div = btn.nextElementSibling;
+  div.classList.toggle("hidden");
+  if (!div.classList.contains("hidden") && !div.textContent) {
+    const labels = ["A","B","C","D"];
+    div.textContent = `先開打：第1組 vs 第2組`;
+  }
+}
+
+const groupColors = ["#3b82f6","#ef4444","#22c55e","#f59e0b","#a855f7","#06b6d4","#ec4899","#84cc16"];
+
+function startQuick() {
+  const total = parseInt(document.getElementById("quickTotal").value) || 6;
+  const per = parseInt(document.getElementById("quickPerGroup").value) || 2;
+  const numGroups = Math.ceil(total / per);
+  const labels = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+  const assignments = [];
+  for (let g = 0; g < numGroups; g++) {
+    for (let k = 0; k < per && assignments.length < total; k++) assignments.push(labels[g]);
+  }
+  for (let i = assignments.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [assignments[i], assignments[j]] = [assignments[j], assignments[i]];
+  }
+  quickAssignments = assignments;
+  quickIndex = 0;
+  document.getElementById("quickSetup").classList.add("hidden");
+  document.getElementById("quickReveal").classList.remove("hidden");
+  document.getElementById("curtainArea").classList.remove("hidden");
+  resetCurtain();
+  document.getElementById("quickStatus").textContent = `請第 1 位點一下確認組別（共 ${total} 人）`;
+  document.getElementById("confirmArea").classList.add("hidden");
+}
+
+function resetCurtain() {
+  const curtain = document.getElementById("curtain");
+  curtain.style.display = "flex";
+  document.getElementById("groupDisplay").style.visibility = "hidden";
+  document.getElementById("confirmArea").classList.add("hidden");
+}
+
+function pullCurtain() {
+  if (quickIndex >= quickAssignments.length) return;
+  const label = quickAssignments[quickIndex];
+  const color = groupColors[label.charCodeAt(0) - 65] || "#3b82f6";
+  document.getElementById("quickGroup").textContent = label;
+  document.getElementById("quickGroup").style.color = color;
+  document.getElementById("quickHint").textContent = "組";
+  document.getElementById("groupDisplay").style.visibility = "visible";
+  document.getElementById("curtain").style.display = "none";
+  document.getElementById("confirmArea").classList.remove("hidden");
+  document.getElementById("quickStatus").textContent = `第 ${quickIndex+1} 位：${label} 組`;
+  if (navigator.vibrate) navigator.vibrate(100);
+}
+
+function confirmNext() {
+  quickIndex++;
+  if (quickIndex >= quickAssignments.length) {
+    showQuickResults();
+    return;
+  }
+  resetCurtain();
+  document.getElementById("quickStatus").textContent = `請第 ${quickIndex+1} 位點一下確認組別`;
+}
+
+function showQuickResults() {
+  const groupsMap = {};
+  quickAssignments.forEach((label, idx) => {
+    if (!groupsMap[label]) groupsMap[label] = [];
+    groupsMap[label].push(idx + 1);
+  });
+  const labels = Object.keys(groupsMap).sort();
+  let html = `<div style="margin-top:12px;">`;
+  labels.forEach(l => {
+    const color = groupColors[l.charCodeAt(0) - 65] || "#3b82f6";
+    html += `<div style="margin-bottom:6px;"><span style="color:${color}; font-weight:bold;">${l} 組</span>：第 ${groupsMap[l].join("、")} 位</div>`;
+  });
+  html += `</div>
+    <button class="secondary small" style="margin-top:8px;" onclick="showFirstMatch(this)">顯示哪組先打</button>
+    <div class="hidden" style="margin-top:8px; padding:8px; background:#1e293b; border-radius:8px;"></div>`;
+  document.getElementById("quickStatus").innerHTML = "全部完成" + html;
+  document.getElementById("confirmArea").classList.add("hidden");
+  document.getElementById("curtainArea").classList.add("hidden");
+  const groups = labels.map(l => [l + " 組", ...groupsMap[l].map(n => "第"+n+"位")]);
+  const firstLabels = [...new Set(quickAssignments)].sort();
+  const firstShuffled = [...firstLabels].sort(() => Math.random() - 0.5);
+  window.currentQuickFirst = firstLabels.length >= 2 ? `先開打：${firstShuffled[0]} 組 vs ${firstShuffled[1]} 組` : "";
+  saveHistory("快速分組", groups, window.currentQuickFirst);
+}
+
+function showFirstMatch(btn) {
+  const div = btn.nextElementSibling;
+  div.classList.toggle("hidden");
+  if (!div.classList.contains("hidden")) {
+    div.textContent = window.currentQuickFirst || "組數不足";
+  }
+}
+
+function resetQuick() {
+  document.getElementById("quickSetup").classList.remove("hidden");
+  document.getElementById("quickReveal").classList.add("hidden");
+}
+
+let rotatePeople = [];
+let rotateGroupsData = [];
+
+function addRotatePerson() {
+  const name = document.getElementById("rName").value.trim();
+  if (!name) return;
+  if (rotatePeople.find(p => p.name === name)) { alert("姓名已存在"); return; }
+  const gender = document.getElementById("rGender").value;
+  const level = document.getElementById("useRotateLevel").checked ? document.getElementById("rLevel").value : "";
+  rotatePeople.push({ name, gender, level, fixed: false });
+  document.getElementById("rName").value = "";
+  renderRotatePeople();
+}
+
+function renderRotatePeople() {
+  document.getElementById("rotatePeopleList").innerHTML = rotatePeople.map((p,i) =>
+    `<span class="tag">${p.name}${p.gender?" ("+p.gender+")":""}${p.level?" ["+p.level+"]":""} <span class="remove" onclick="rotatePeople.splice(${i},1);renderRotatePeople();">×</span></span>`
+  ).join("");
+}
+
+function confirmRotate() {
+  if (rotatePeople.length < 2) { alert("請先新增人員"); return; }
+  const numGroups = parseInt(document.getElementById("rGroups").value) || 3;
+  const shuffled = [...rotatePeople].sort(() => Math.random() - 0.5);
+  rotateGroupsData = Array.from({length:numGroups}, () => []);
+  shuffled.forEach((p,i) => rotateGroupsData[i % numGroups].push({...p}));
+  renderRotateGroups();
+  const first = showRotateFirst();
+  saveHistory("單人輪轉", rotateGroupsData.map(g => g.map(p => p.name)), first);
+}
+
+function renderRotateGroups() {
+  document.getElementById("rotateResult").innerHTML = rotateGroupsData.map((g, gi) =>
+    `<div class="card" style="margin-bottom:8px;">
+      <strong>第${gi+1}組</strong><br>
+      ${g.map((p, pi) => `<label style="display:inline-flex; align-items:center; margin-right:8px;"><input type="checkbox" ${p.fixed?"checked":""} onchange="rotateGroupsData[${gi}][${pi}].fixed=this.checked"> ${p.name}</label>`).join("")}
+    </div>`
+  ).join("");
+}
+
+function doRotate(dir) {
+  if (!rotateGroupsData.length) return;
+  const numGroups = rotateGroupsData.length;
+  const movers = rotateGroupsData.map(g => g.filter(p => !p.fixed));
+  const fixeds = rotateGroupsData.map(g => g.filter(p => p.fixed));
+  if (dir === "cw") {
+    for (let i = 0; i < numGroups; i++) {
+      rotateGroupsData[i] = [...fixeds[i], ...(movers[(i - 1 + numGroups) % numGroups] || [])];
+    }
+  } else {
+    for (let i = 0; i < numGroups; i++) {
+      rotateGroupsData[i] = [...fixeds[i], ...(movers[(i + 1) % numGroups] || [])];
+    }
+  }
+  renderRotateGroups();
+  const first = showRotateFirst();
+  saveHistory("單人輪轉", rotateGroupsData.map(g => g.map(p => p.name)), first);
+}
+
+function showRotateFirst() {
+  const labels = rotateGroupsData.map((_,i) => String.fromCharCode(65+i));
+  if (labels.length < 2) return;
+  const shuffled = [...labels].sort(() => Math.random() - 0.5);
+  const text = `先開打：${shuffled[0]} 組 vs ${shuffled[1]} 組`;
+  document.getElementById("rotateFirst").innerHTML = `<div style="margin-top:8px; padding:8px; background:#1e293b; border-radius:8px;">${text}</div>`;
+  return text;
+}
+
+function clearPeople() {
+  if (!confirm("確定清空？")) return;
+  people = [];
+  cannotPairs = [];
+  hopePairs = [];
+  renderPeople();
+  renderConstraints();
+  updateSelects();
+}
+
+function loadSample() {
+  people = [{name:"小明",gender:"男"},{name:"小華",gender:"女"},{name:"小美",gender:"女"},{name:"阿強",gender:"男"},{name:"阿珍",gender:"女"},{name:"阿明",gender:"男"}];
+  renderPeople();
+  updateSelects();
+}
+
+function saveRackets() {
+  try { localStorage.setItem("rackets", JSON.stringify(rackets)); } catch(e) {}
+}
+
+function loadRackets() {
+  try { rackets = JSON.parse(localStorage.getItem("rackets") || "[]"); } catch(e) { rackets = []; }
+}
+
+function addRacket() {
+  const name = document.getElementById("racketName").value.trim();
+  if (!name) { alert("請輸入球拍名稱"); return; }
+  const weight = document.getElementById("racketWeight").value;
+  const grip = document.getElementById("racketGrip").value;
+  rackets.unshift({ name, weight, grip, strings: [] });
+  document.getElementById("racketName").value = "";
+  document.getElementById("racketWeight").value = "";
+  document.getElementById("racketGrip").value = "";
+  saveRackets();
+  renderRackets();
+  setTimeout(() => showNewString(0), 50);
+}
+
+function addString(i) {
+  const str = document.getElementById("str"+i).value.trim();
+  const tension = document.getElementById("ten"+i).value;
+  const date = document.getElementById("date"+i).value || new Date().toISOString().slice(0,10);
+  if (!str && !tension) return;
+  rackets[i].strings.unshift({ string: str, tension, date });
+  document.getElementById("str"+i).value = "";
+  document.getElementById("ten"+i).value = "";
+  document.getElementById("newStr"+i).classList.add("hidden");
+  saveRackets();
+  renderRackets();
+}
+
+function renderRackets() {
+  const el = document.getElementById("racketList");
+  if (!rackets.length) { el.innerHTML = `<span style="color:var(--text-dim)">尚無球拍</span>`; return; }
+  el.innerHTML = rackets.map((r, i) => `
+    <div class="card" style="margin-bottom:12px;">
+      <strong>${r.name}</strong>
+      ${r.weight ? "　"+r.weight : ""}
+      ${r.grip ? "　"+r.grip : ""}
+      <span class="remove" onclick="rackets.splice(${i},1);saveRackets();renderRackets();" style="float:right;">×</span>
+      <div style="margin-top:10px;">
+        ${r.strings.map((s, si) => `
+          <div style="font-size:0.85rem; color:var(--text-dim); padding:4px 0; border-bottom:1px solid var(--border);">
+            ${s.date}　${s.string || ""}　${s.tension ? s.tension+"磅" : ""}
+            ${si === 0 ? `<button class="small" style="background:#ef4444; margin-left:8px;" onclick="showNewString(${i})">斷線</button>` : ""}
+          </div>
+        `).join("")}
+        <div id="newStr${i}" class="hidden" style="margin-top:8px;">
+          <input type="text" id="str${i}" placeholder="線種" style="margin-bottom:6px;">
+          <div class="row">
+            <input type="number" id="ten${i}" placeholder="磅數" min="15" max="35" step="0.5">
+            <input type="date" id="date${i}" value="${new Date().toISOString().slice(0,10)}">
+          </div>
+          <button class="small" onclick="addString(${i})">新增穿線</button>
+        </div>
+      </div>
+    </div>
+  `).join("");
+}
+
+function showNewString(i) {
+  const el = document.getElementById("newStr"+i);
+  if (el) {
+    el.classList.remove("hidden");
+    el.scrollIntoView({behavior:"smooth", block:"center"});
+  }
+  if (navigator.vibrate) navigator.vibrate(50);
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const d = document.getElementById("groupDate");
+  if (d) d.valueAsDate = new Date();
+  loadRackets();
+  renderRackets();
+  renderManualHistory();
+  renderHistory();
+});
+</script>
+<script>if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");</script></body>
+</html>
