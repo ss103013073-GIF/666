@@ -67,6 +67,7 @@ button.small { padding:6px 10px; font-size:0.85rem; }
     <button id="btnManual" class="active" onclick="switchMode('manual')">手動輸入</button>
     <button id="btnQuick" onclick="switchMode('quick')">快速分組</button>
     <button id="btnRotate" onclick="switchMode('rotate')">單人輪轉</button>
+    <button id="btnCover" onclick="switchMode('cover')">全覆蓋</button>
   </div>
 
   <div id="mode-manual">
@@ -234,6 +235,33 @@ button.small { padding:6px 10px; font-size:0.85rem; }
       </div>
     </div>
   </div>
+  <div class="card hidden" id="coverCard">
+    <h2>全覆蓋輪轉</h2>
+    <div class="row">
+      <div><label>人數</label>
+        <select id="coverCount" onchange="setupCover()">
+          <option value="6">6人</option>
+          <option value="7">7人</option>
+          <option value="8">8人</option>
+          <option value="9">9人</option>
+          <option value="10">10人</option>
+        </select>
+      </div>
+    </div>
+    <div id="coverNames" style="margin-top:8px;"></div>
+    <button onclick="startCover()" style="margin-top:8px;">開始</button>
+    <div id="coverResult" style="margin-top:12px;"></div>
+    <div class="row" style="margin-top:8px;">
+      <button onclick="nextCover()">下一輪</button>
+      <button onclick="prevCover()">上一輪</button>
+    </div>
+    <div id="coverProgress" style="margin-top:8px; color:var(--accent);"></div>
+    <div id="coverPartners" style="margin-top:12px;"></div>
+    <div class="card" style="margin-top:12px;">
+      <h3>全覆蓋紀錄</h3>
+      <div id="coverHistoryList"></div>
+    </div>
+  </div>
   <div class="card" id="quickHistoryCard" style="display:none;">
     <h2>快速分組紀錄</h2>
     <div id="quickHistoryList"></div>
@@ -354,15 +382,163 @@ function switchMode(mode) {
   document.getElementById("btnManual").classList.toggle("active", mode === "manual");
   document.getElementById("btnQuick").classList.toggle("active", mode === "quick");
   document.getElementById("btnRotate").classList.toggle("active", mode === "rotate");
+  document.getElementById("btnCover").classList.toggle("active", mode === "cover");
   document.getElementById("mode-manual").classList.toggle("hidden", mode !== "manual");
   document.getElementById("mode-quick").classList.toggle("hidden", mode !== "quick");
   document.getElementById("mode-rotate").classList.toggle("hidden", mode !== "rotate");
+  document.getElementById("coverCard").classList.toggle("hidden", mode !== "cover");
+  if (mode === "cover") setupCover();
 }
 
-function setWeekday(btn) {
-  document.querySelectorAll("#weekdayBtns button").forEach(b => b.classList.remove("active"));
-  btn.classList.add("active");
-  selectedDay = btn.dataset.day;
+let coverState = null;
+let coverStep = 0;
+let coverTotal = 0;
+let coverNames = [];
+let coverHistory = JSON.parse(localStorage.getItem("coverHistory") || "[]");
+
+function getCoverPartners() {
+  const partners = {};
+  coverNames.forEach(n => partners[n] = new Set());
+  for (let i = 0; i <= coverStep && coverState; i++) {
+    const groups = coverState[i];
+    if (!groups) continue;
+    groups.forEach(g => {
+      for (let a = 0; a < g.length; a++) {
+        for (let b = a + 1; b < g.length; b++) {
+          if (partners[g[a]]) partners[g[a]].add(g[b]);
+          if (partners[g[b]]) partners[g[b]].add(g[a]);
+        }
+      }
+    });
+  }
+  return partners;
+}
+
+function showCoverPartners() {
+  const el = document.getElementById("coverPartners");
+  if (!el || !coverNames.length) return;
+  const partners = getCoverPartners();
+  let html = `<div style="font-size:0.85rem;"><strong>已組過的隊友：</strong><div style="margin-top:6px;">`;
+  coverNames.forEach(n => {
+    const list = [...(partners[n] || [])].join("、") || "尚無";
+    html += `<div style="padding:4px 0; border-bottom:1px solid var(--border);"><strong>${n}</strong>：${list}</div>`;
+  });
+  html += `</div></div>`;
+  el.innerHTML = html;
+}
+
+function setupCover() {
+  const n = parseInt(document.getElementById("coverCount").value);
+  let html = "";
+  for (let i = 1; i <= n; i++) {
+    html += `<input type="text" id="cn${i}" placeholder="第${i}人" style="margin-bottom:4px; width:100%;">`;
+  }
+  document.getElementById("coverNames").innerHTML = html;
+  document.getElementById("coverResult").innerHTML = "";
+  document.getElementById("coverProgress").textContent = "";
+}
+
+function startCover() {
+  const n = parseInt(document.getElementById("coverCount").value);
+  coverNames = [];
+  for (let i = 1; i <= n; i++) {
+    const v = document.getElementById("cn"+i).value.trim() || (""+i);
+    coverNames.push(v);
+  }
+  coverState = generateCoverRounds(coverNames);
+  coverStep = 0;
+  coverTotal = coverState.length;
+  showCoverStep();
+  saveCoverHistory();
+}
+
+function generateCoverRounds(names) {
+  const n = names.length;
+  const rounds = [];
+  
+  if (n === 6) {
+    const s = [[[0,1],[2,3],[4,5]],[[0,2],[1,4],[3,5]],[[0,3],[1,5],[2,4]],[[0,4],[1,3],[2,5]],[[0,5],[1,2],[3,4]]];
+    s.forEach(r => rounds.push(r.map(p => [names[p[0]], names[p[1]]])));
+  } else if (n === 7) {
+    const s = [[[1,2],[3,4],[5,6]],[[0,2],[3,5],[4,6]],[[0,1],[3,6],[4,5]],[[0,4],[1,5],[2,6]],[[0,3],[1,6],[2,5]],[[0,6],[1,3],[2,4]],[[0,5],[1,4],[2,3]]];
+    s.forEach(r => rounds.push(r.map(p => [names[p[0]], names[p[1]]])));
+  } else if (n === 8) {
+    for (let r = 0; r < 7; r++) {
+      const others = Array.from({length:7}, (_,i) => (i + r) % 7 + 1);
+      rounds.push([[names[0], names[others[0]]],[names[others[1]], names[others[6]]],[names[others[2]], names[others[5]]],[names[others[3]], names[others[4]]]]);
+    }
+  } else if (n === 9) {
+    const s = [[[2,5],[3,6],[1,4],[7,8]],[[0,2],[5,6],[3,4],[7,8]],[[4,6],[5,7],[0,1],[3,8]],[[4,8],[1,2],[6,7],[0,5]],[[0,7],[1,8],[3,5],[2,6]],[[2,8],[4,7],[0,3],[1,5]],[[2,3],[1,6],[0,4],[5,8]],[[4,5],[1,7],[2,3],[0,6]],[[2,7],[6,8],[3,4],[1,5]],[[3,7],[0,8],[2,6],[4,5]]];
+    s.forEach(r => rounds.push(r.map(p => [names[p[0]], names[p[1]]])));
+  } else if (n === 10) {
+    for (let r = 0; r < 9; r++) {
+      const others = Array.from({length:9}, (_,i) => (i + r) % 9 + 1);
+      rounds.push([[names[0], names[others[0]]],[names[others[1]], names[others[8]]],[names[others[2]], names[others[7]]],[names[others[3]], names[others[6]]],[names[others[4]], names[others[5]]]]);
+    }
+  }
+  return rounds;
+}
+
+function showCoverStep() {
+  if (!coverState || !coverState.length) return;
+  const groups = coverState[coverStep];
+  let html = `<strong>第 ${coverStep+1} / ${coverTotal} 輪</strong><div class="groups-grid" style="margin-top:8px;">`;
+  groups.forEach((g, i) => {
+    html += `<div class="card" style="margin:0; padding:10px;"><strong>第 ${i+1} 組</strong><br>${g.join("、")}</div>`;
+  });
+  html += `</div>`;
+  html += `<button class="secondary small" style="margin-top:8px;" onclick="showCoverFirst()">顯示哪組先打</button>`;
+  html += `<div id="coverFirstText" class="hidden" style="margin-top:8px; padding:8px; background:#1e293b; border-radius:8px;"></div>`;
+  document.getElementById("coverResult").innerHTML = html;
+  document.getElementById("coverProgress").textContent = `進度 ${coverStep+1} / ${coverTotal}`;
+  showCoverPartners();
+}
+
+function saveCoverHistory() {
+  const entry = {
+    date: new Date().toISOString().slice(0,10),
+    count: coverNames.length,
+    names: [...coverNames],
+    rounds: coverState.length
+  };
+  coverHistory.unshift(entry);
+  if (coverHistory.length > 20) coverHistory.pop();
+  localStorage.setItem("coverHistory", JSON.stringify(coverHistory));
+  renderCoverHistory();
+}
+
+function renderCoverHistory() {
+  const el = document.getElementById("coverHistoryList");
+  if (!el) return;
+  if (!coverHistory.length) { el.innerHTML = `<span style="color:var(--text-dim)">尚無紀錄</span>`; return; }
+  el.innerHTML = coverHistory.map((h, i) =>
+    `<div style="padding:6px 0; border-bottom:1px solid var(--border); font-size:0.85rem;">
+      ${h.date}　${h.count}人　${h.rounds}輪
+      <span class="remove" onclick="coverHistory.splice(${i},1);localStorage.setItem('coverHistory',JSON.stringify(coverHistory));renderCoverHistory();" style="float:right;">×</span>
+    </div>`
+  ).join("");
+}
+
+function showCoverFirst() {
+  const groups = coverState[coverStep];
+  if (groups.length < 2) return;
+  const idx = [...Array(groups.length).keys()].sort(() => Math.random() - 0.5);
+  const text = `先開打：第 ${idx[0]+1} 組 vs 第 ${idx[1]+1} 組`;
+  const el = document.getElementById("coverFirstText");
+  el.textContent = text;
+  el.classList.remove("hidden");
+}
+
+function nextCover() {
+  if (!coverState) return;
+  coverStep = (coverStep + 1) % coverState.length;
+  showCoverStep();
+}
+
+function prevCover() {
+  if (!coverState) return;
+  coverStep = (coverStep - 1 + coverState.length) % coverState.length;
+  showCoverStep();
 }
 
 function toggleAbility() {
@@ -839,6 +1015,7 @@ document.addEventListener("DOMContentLoaded", () => {
   renderRackets();
   renderManualHistory();
   renderHistory();
+  renderCoverHistory();
 });
 </script>
 <script>if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");</script></body>
