@@ -55,6 +55,10 @@ button.small { padding:6px 10px; font-size:0.85rem; }
     <h2>歡迎使用羽球分組</h2>
     <p>點右上角 ☰ 選擇功能</p>
   </div>
+  <div style="margin-top:24px; text-align:center;">
+    <p id="appVersionLabel" style="font-size:0.85rem; color:var(--text-dim); margin-bottom:8px;">版本 v1.1.0</p>
+    <button class="secondary" onclick="checkUpdate()" style="width:100%;">檢查更新</button>
+  </div>
 </div>
 
 <!-- Group -->
@@ -1008,6 +1012,42 @@ function showNewString(i) {
   if (navigator.vibrate) navigator.vibrate(50);
 }
 
+const APP_VERSION = "1.1.0";
+
+async function checkUpdate() {
+  const btn = document.querySelector('button[onclick="checkUpdate()"]');
+  if (btn) { btn.disabled = true; btn.textContent = "檢查中…"; }
+  try {
+    if ("caches" in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+    if ("serviceWorker" in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.unregister()));
+    }
+    const url = location.href.split("?")[0].split("#")[0] + "?_=" + Date.now();
+    const res = await fetch(url, { cache: "no-store" });
+    const text = await res.text();
+    const m = text.match(/APP_VERSION\s*=\s*["']([^"']+)["']/);
+    const remote = m ? m[1] : null;
+    if (remote && remote !== APP_VERSION) {
+      if (confirm("發現新版本 v" + remote + "（目前 v" + APP_VERSION + "）\n是否重新載入？")) {
+        location.replace(location.href.split("?")[0].split("#")[0] + "?v=" + remote);
+        return;
+      }
+    } else {
+      alert("已是最新版本 v" + APP_VERSION + "\n將重新載入以套用最新檔案。");
+      location.reload();
+      return;
+    }
+  } catch (e) {
+    if (confirm("檢查失敗，是否強制重新載入？")) location.reload();
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "檢查更新"; }
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   const d = document.getElementById("groupDate");
   if (d) d.valueAsDate = new Date();
@@ -1016,6 +1056,8 @@ document.addEventListener("DOMContentLoaded", () => {
   renderManualHistory();
   renderHistory();
   renderCoverHistory();
+  const vl = document.getElementById("appVersionLabel");
+  if (vl) vl.textContent = "版本 v" + APP_VERSION;
 });
 </script>
 <script>if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");</script></body>
