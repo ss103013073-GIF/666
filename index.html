@@ -56,7 +56,7 @@ button.small { padding:6px 10px; font-size:0.85rem; }
     <p>點右上角 ☰ 選擇功能</p>
   </div>
   <div style="margin-top:24px; text-align:center;">
-    <p id="appVersionLabel" style="font-size:0.85rem; color:var(--text-dim); margin-bottom:8px;">版本 v1.1.0</p>
+    <p id="appVersionLabel" style="font-size:0.85rem; color:var(--text-dim); margin-bottom:8px;">版本 v1.3.1</p>
     <button class="secondary" onclick="checkUpdate()" style="width:100%;">檢查更新</button>
   </div>
 </div>
@@ -66,6 +66,24 @@ button.small { padding:6px 10px; font-size:0.85rem; }
   <div style="margin-bottom:12px;">
     <label>日期</label>
     <input type="date" id="groupDate">
+  </div>
+  <div style="margin-bottom:12px;">
+    <button class="secondary" onclick="toggleRosterPanel()" style="width:100%;">成員</button>
+  </div>
+  <div id="rosterPanel" class="card hidden">
+    <h2>成員名單</h2>
+    <label>名單名稱</label>
+    <input type="text" id="rosterNameInput" placeholder="例如：週三固定">
+    <label>名單內容（一行一個名字，可用 名字,男,8 或 名字,女）</label>
+    <textarea id="rosterTextInput" rows="6" placeholder="小明,男,10&#10;小華,女,8&#10;阿強"></textarea>
+    <div class="row" style="gap:8px; margin-top:8px;">
+      <button onclick="saveRoster()">存成名單</button>
+      <button class="secondary" onclick="updateRoster()">更新目前編輯</button>
+      <button class="secondary small" onclick="importFromPeople()">帶入目前手動名單</button>
+    </div>
+    <p id="rosterEditHint" style="font-size:0.85rem; color:var(--accent); margin-top:8px;"></p>
+    <h3 style="margin-top:12px;">已存名單（點載入）</h3>
+    <div id="rosterList"></div>
   </div>
   <div class="mode-switch">
     <button id="btnManual" class="active" onclick="switchMode('manual')">手動輸入</button>
@@ -77,6 +95,10 @@ button.small { padding:6px 10px; font-size:0.85rem; }
   <div id="mode-manual">
     <div class="card">
       <h2>1. 人員名單</h2>
+      <label>載入已存名單</label>
+      <select id="manualRosterSelect" onchange="applyRosterToManual(this.value)">
+        <option value="">選擇名單…</option>
+      </select>
       <div class="row">
         <input type="text" id="nameInput" placeholder="輸入姓名後按 Enter 或點新增">
         <select id="genderInput" style="flex:0 0 100px;">
@@ -99,7 +121,7 @@ button.small { padding:6px 10px; font-size:0.85rem; }
       </div>
       <div id="peopleList" class="people-list" style="margin-top:8px;"></div>
       <div class="row" style="margin-top:8px;">
-        <button class="secondary small" onclick="clearPeople()">清空名單</button>
+        <button type="button" class="secondary small" id="btnClearPeople" onclick="clearPeople(event)">清空名單</button>
         <button class="secondary small" onclick="loadSample()">載入範例</button>
       </div>
     </div>
@@ -241,9 +263,21 @@ button.small { padding:6px 10px; font-size:0.85rem; }
   </div>
   <div class="card hidden" id="coverCard">
     <h2>全覆蓋輪轉</h2>
-    <div class="row">
-      <div><label>人數</label>
-        <select id="coverCount" onchange="setupCover()">
+    <label>載入已存名單</label>
+    <select id="coverRosterSelect" onchange="onCoverRosterChange()">
+      <option value="">選擇名單…</option>
+    </select>
+    <div class="row" style="margin-top:8px; gap:8px;">
+      <input type="text" id="coverNameInput" placeholder="手動新增姓名" style="flex:1; margin-bottom:0;">
+      <button type="button" onclick="addCoverPerson()" style="flex:0 0 auto;">新增</button>
+    </div>
+    <div id="coverPeopleList" class="people-list" style="margin-top:8px;"></div>
+    <div class="row" style="margin-top:8px;">
+      <button type="button" class="secondary small" onclick="clearCoverPeople()">清空人員</button>
+    </div>
+    <div class="row" style="margin-top:8px;">
+      <div style="flex:1;"><label>使用幾人（全覆蓋）</label>
+        <select id="coverCount">
           <option value="6">6人</option>
           <option value="7">7人</option>
           <option value="8">8人</option>
@@ -252,7 +286,7 @@ button.small { padding:6px 10px; font-size:0.85rem; }
         </select>
       </div>
     </div>
-    <div id="coverNames" style="margin-top:8px;"></div>
+    <p id="coverRosterHint" style="font-size:0.85rem; color:var(--text-dim); margin:8px 0;">可載入名單或手動一個一個新增，第一輪會隨機分組</p>
     <button onclick="startCover()" style="margin-top:8px;">開始</button>
     <div id="coverResult" style="margin-top:12px;"></div>
     <div class="row" style="margin-top:8px;">
@@ -431,24 +465,71 @@ function showCoverPartners() {
   el.innerHTML = html;
 }
 
-function setupCover() {
-  const n = parseInt(document.getElementById("coverCount").value);
-  let html = "";
-  for (let i = 1; i <= n; i++) {
-    html += `<input type="text" id="cn${i}" placeholder="第${i}人" style="margin-bottom:4px; width:100%;">`;
+let coverPeople = [];
+
+function renderCoverPeople() {
+  const el = document.getElementById("coverPeopleList");
+  if (!el) return;
+  if (!coverPeople.length) {
+    el.innerHTML = '<span style="color:var(--text-dim); font-size:0.9rem;">尚無人員</span>';
+    return;
   }
-  document.getElementById("coverNames").innerHTML = html;
+  el.innerHTML = coverPeople.map((n, i) =>
+    `<span class="tag">${n} <span class="remove" onclick="coverPeople.splice(${i},1);renderCoverPeople();">×</span></span>`
+  ).join("");
+}
+
+function addCoverPerson() {
+  const input = document.getElementById("coverNameInput");
+  const name = (input && input.value || "").trim();
+  if (!name) return;
+  if (coverPeople.includes(name)) { alert("姓名已存在"); return; }
+  coverPeople.push(name);
+  if (input) input.value = "";
+  renderCoverPeople();
+}
+
+function clearCoverPeople() {
+  coverPeople = [];
+  renderCoverPeople();
+  const sel = document.getElementById("coverRosterSelect");
+  if (sel) sel.value = "";
+  const hint = document.getElementById("coverRosterHint");
+  if (hint) hint.textContent = "可載入名單或手動一個一個新增，第一輪會隨機分組";
+}
+
+function setupCover() {
   document.getElementById("coverResult").innerHTML = "";
   document.getElementById("coverProgress").textContent = "";
 }
 
-function startCover() {
-  const n = parseInt(document.getElementById("coverCount").value);
-  coverNames = [];
-  for (let i = 1; i <= n; i++) {
-    const v = document.getElementById("cn"+i).value.trim() || (""+i);
-    coverNames.push(v);
+function onCoverRosterChange() {
+  const id = document.getElementById("coverRosterSelect").value;
+  const hint = document.getElementById("coverRosterHint");
+  if (!id) {
+    if (hint) hint.textContent = "可載入名單或手動一個一個新增，第一輪會隨機分組";
+    return;
   }
+  const r = savedRosters.find(x => x.id === id);
+  if (!r) return;
+  coverPeople = r.people.map(p => p.name);
+  renderCoverPeople();
+  if (hint) hint.textContent = "已載入「" + r.name + "」共 " + coverPeople.length + " 人，可再手動增減。第一輪會隨機分組。";
+}
+
+function startCover() {
+  const n = parseInt(document.getElementById("coverCount").value, 10);
+  if (coverPeople.length < n) {
+    alert("目前只有 " + coverPeople.length + " 人，不足 " + n + " 人。請載入名單或手動新增。");
+    return;
+  }
+  // take n people then shuffle so first round is random
+  let pool = coverPeople.slice(0, n);
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
+  }
+  coverNames = pool;
   coverState = generateCoverRounds(coverNames);
   coverStep = 0;
   coverTotal = coverState.length;
@@ -923,14 +1004,43 @@ function showRotateFirst() {
   return text;
 }
 
-function clearPeople() {
-  if (!confirm("確定清空？")) return;
+function clearPeople(ev) {
+  if (ev && ev.preventDefault) ev.preventDefault();
+  if (ev && ev.stopPropagation) ev.stopPropagation();
+  var btn = document.getElementById("btnClearPeople");
+  if (!btn) {
+    people = [];
+    cannotPairs = [];
+    hopePairs = [];
+    renderPeople();
+    if (typeof renderConstraints === "function") renderConstraints();
+    if (typeof updateSelects === "function") updateSelects();
+    return;
+  }
+  if (btn.getAttribute("data-confirm") !== "1") {
+    btn.setAttribute("data-confirm", "1");
+    btn.textContent = "再按一次確認清空";
+    btn.style.background = "#ef4444";
+    setTimeout(function() {
+      if (btn.getAttribute("data-confirm") === "1") {
+        btn.setAttribute("data-confirm", "");
+        btn.textContent = "清空名單";
+        btn.style.background = "";
+      }
+    }, 3000);
+    return;
+  }
+  btn.setAttribute("data-confirm", "");
+  btn.textContent = "清空名單";
+  btn.style.background = "";
   people = [];
   cannotPairs = [];
   hopePairs = [];
   renderPeople();
-  renderConstraints();
-  updateSelects();
+  if (typeof renderConstraints === "function") renderConstraints();
+  if (typeof updateSelects === "function") updateSelects();
+  btn.textContent = "已清空";
+  setTimeout(function() { btn.textContent = "清空名單"; }, 1200);
 }
 
 function loadSample() {
@@ -1012,7 +1122,195 @@ function showNewString(i) {
   if (navigator.vibrate) navigator.vibrate(50);
 }
 
-const APP_VERSION = "1.1.0";
+
+let savedRosters = [];
+let editingRosterId = null;
+
+function loadRosters() {
+  try { savedRosters = JSON.parse(localStorage.getItem("savedRosters") || "[]"); } catch(e) { savedRosters = []; }
+}
+
+function refreshRosterSelects() {
+  const opts = '<option value="">選擇名單…</option>' + savedRosters.map(r =>
+    `<option value="${r.id}">${r.name}（${r.people.length}人）</option>`
+  ).join("");
+  ["manualRosterSelect", "coverRosterSelect"].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const cur = el.value;
+    el.innerHTML = opts;
+    if (cur && savedRosters.some(r => r.id === cur)) el.value = cur;
+  });
+}
+
+function applyRosterToManual(id) {
+  if (!id) return;
+  const r = savedRosters.find(x => x.id === id);
+  if (!r) return;
+  people = r.people.map(p => ({ name: p.name, gender: p.gender || "", ability: p.ability || "" }));
+  renderPeople();
+  if (typeof updateSelects === "function") updateSelects();
+  rotatePeople = r.people.map(p => ({ name: p.name, gender: p.gender || "", level: p.ability || "", fixed: false }));
+  if (typeof renderRotatePeople === "function") renderRotatePeople();
+}
+
+
+function persistRosters() {
+  try { localStorage.setItem("savedRosters", JSON.stringify(savedRosters)); } catch(e) {}
+}
+
+function toggleRosterPanel() {
+  const el = document.getElementById("rosterPanel");
+  if (!el) return;
+  el.classList.toggle("hidden");
+  if (!el.classList.contains("hidden")) renderRosterList();
+}
+
+function parseRosterText(text) {
+  return text.split(/\n+/).map(line => line.trim()).filter(Boolean).map(line => {
+    const parts = line.split(/[,，\t]/).map(s => s.trim());
+    const name = parts[0] || "";
+    let gender = "", ability = "";
+    if (parts[1] === "男" || parts[1] === "女") gender = parts[1];
+    if (parts[2] && /^\d+$/.test(parts[2])) ability = parts[2];
+    else if (parts[1] && /^\d+$/.test(parts[1])) ability = parts[1];
+    return { name, gender, ability };
+  }).filter(p => p.name);
+}
+
+function rosterToText(list) {
+  return list.map(p => {
+    let s = p.name;
+    if (p.gender) s += "," + p.gender;
+    if (p.ability) s += "," + p.ability;
+    return s;
+  }).join("\n");
+}
+
+function saveRoster() {
+  const title = (document.getElementById("rosterNameInput").value || "").trim();
+  const list = parseRosterText(document.getElementById("rosterTextInput").value || "");
+  if (!title) { alert("請輸入名單名稱"); return; }
+  if (!list.length) { alert("請輸入至少一個名字"); return; }
+  if (savedRosters.some(r => r.name === title && r.id !== editingRosterId)) {
+    alert("已有同名名單，請換名稱或按「更新目前編輯」");
+    return;
+  }
+  const item = { id: Date.now().toString(36) + Math.random().toString(36).slice(2,6), name: title, people: list };
+  savedRosters.unshift(item);
+  persistRosters();
+  editingRosterId = item.id;
+  document.getElementById("rosterEditHint").textContent = "目前編輯：" + title;
+  renderRosterList();
+  alert("已存檔：「" + title + "」共 " + list.length + " 人");
+}
+
+function updateRoster() {
+  if (!editingRosterId) { alert("請先點某份名單的「編輯」，或先「存成名單」"); return; }
+  const title = (document.getElementById("rosterNameInput").value || "").trim();
+  const list = parseRosterText(document.getElementById("rosterTextInput").value || "");
+  if (!title) { alert("請輸入名單名稱"); return; }
+  if (!list.length) { alert("請輸入至少一個名字"); return; }
+  const idx = savedRosters.findIndex(r => r.id === editingRosterId);
+  if (idx < 0) { alert("找不到要更新的名單"); return; }
+  if (savedRosters.some(r => r.name === title && r.id !== editingRosterId)) {
+    alert("已有同名名單");
+    return;
+  }
+  savedRosters[idx] = { ...savedRosters[idx], name: title, people: list };
+  persistRosters();
+  document.getElementById("rosterEditHint").textContent = "目前編輯：" + title;
+  renderRosterList();
+  alert("已更新：「" + title + "」");
+}
+
+function importFromPeople() {
+  if (!people.length) { alert("目前手動名單是空的"); return; }
+  document.getElementById("rosterTextInput").value = rosterToText(people);
+}
+
+function loadRoster(id) {
+  const r = savedRosters.find(x => x.id === id);
+  if (!r) return;
+  people = r.people.map(p => ({ name: p.name, gender: p.gender || "", ability: p.ability || "" }));
+  renderPeople();
+  updateSelects();
+  // also fill rotate list for convenience
+  rotatePeople = r.people.map(p => ({ name: p.name, gender: p.gender || "", level: p.ability || "", fixed: false }));
+  if (typeof renderRotatePeople === "function") renderRotatePeople();
+  alert("已載入「" + r.name + "」共 " + people.length + " 人到手動／單人輪轉");
+}
+
+function editRoster(id) {
+  const r = savedRosters.find(x => x.id === id);
+  if (!r) { alert("找不到此名單"); return; }
+  editingRosterId = id;
+  document.getElementById("rosterNameInput").value = r.name;
+  document.getElementById("rosterTextInput").value = rosterToText(r.people);
+  document.getElementById("rosterEditHint").textContent = "目前編輯：" + r.name + "（可改完按更新）";
+  document.getElementById("rosterPanel").classList.remove("hidden");
+  document.getElementById("rosterNameInput").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function deleteRoster(id, btn) {
+  const r = savedRosters.find(x => x.id === id);
+  if (!r) {
+    alert("找不到此名單");
+    return;
+  }
+  if (btn && btn.dataset.confirm !== "1") {
+    btn.dataset.confirm = "1";
+    btn.textContent = "確認?";
+    setTimeout(function() {
+      if (btn.dataset.confirm === "1") {
+        btn.dataset.confirm = "";
+        btn.textContent = "刪";
+      }
+    }, 3000);
+    return;
+  }
+  savedRosters = savedRosters.filter(x => x.id !== id);
+  if (editingRosterId === id) {
+    editingRosterId = null;
+    const hint = document.getElementById("rosterEditHint");
+    if (hint) hint.textContent = "";
+  }
+  persistRosters();
+  renderRosterList();
+}
+
+function renderRosterList() {
+  const el = document.getElementById("rosterList");
+  if (!el) return;
+  if (!savedRosters.length) {
+    el.innerHTML = '<span style="color:var(--text-dim); font-size:0.9rem;">尚無已存名單</span>';
+    return;
+  }
+  el.innerHTML = savedRosters.map(r =>
+    `<div class="roster-row" data-id="${r.id}" style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; padding:8px 0; border-bottom:1px solid var(--border);">
+      <button type="button" data-act="load" style="flex:1; text-align:left;">${r.name}（${r.people.length}人）</button>
+      <button type="button" class="secondary small" data-act="edit">編輯</button>
+      <button type="button" class="secondary small" data-act="del" style="background:#ef4444;">刪</button>
+    </div>`
+  ).join("");
+  refreshRosterSelects();
+  el.onclick = function(ev) {
+    const btn = ev.target.closest("button[data-act]");
+    if (!btn) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    const row = btn.closest(".roster-row");
+    if (!row) return;
+    const id = row.getAttribute("data-id");
+    const act = btn.getAttribute("data-act");
+    if (act === "load") loadRoster(id);
+    else if (act === "edit") editRoster(id);
+    else if (act === "del") deleteRoster(id, btn);
+  };
+}
+
+
+const APP_VERSION = "1.3.1";
 
 async function checkUpdate() {
   const btn = document.querySelector('button[onclick="checkUpdate()"]');
@@ -1053,11 +1351,19 @@ document.addEventListener("DOMContentLoaded", () => {
   if (d) d.valueAsDate = new Date();
   loadRackets();
   renderRackets();
+  loadRosters();
+  renderRosterList();
+  refreshRosterSelects();
   renderManualHistory();
   renderHistory();
   renderCoverHistory();
   const vl = document.getElementById("appVersionLabel");
   if (vl) vl.textContent = "版本 v" + APP_VERSION;
+  const cni = document.getElementById("coverNameInput");
+  if (cni) cni.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") { e.preventDefault(); addCoverPerson(); }
+  });
+  renderCoverPeople();
 });
 </script>
 <script>if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");</script></body>
