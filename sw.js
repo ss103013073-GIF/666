@@ -1,4 +1,4 @@
-const CACHE = "badminton-v1.3.5";
+const CACHE = "badminton-v1.3.6";
 const FILES = ["./index.html", "./manifest.json"];
 self.addEventListener("install", e => {
   self.skipWaiting();

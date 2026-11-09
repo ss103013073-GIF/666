@@ -56,7 +56,7 @@ button.small { padding:6px 10px; font-size:0.85rem; }
     <p>點右上角 ☰ 選擇功能</p>
   </div>
   <div style="margin-top:24px; text-align:center;">
-    <p id="appVersionLabel" style="font-size:0.85rem; color:var(--text-dim); margin-bottom:8px;">版本 v1.3.5</p>
+    <p id="appVersionLabel" style="font-size:0.85rem; color:var(--text-dim); margin-bottom:8px;">版本 v1.3.6</p>
     <button class="secondary" onclick="checkUpdate()" style="width:100%;">檢查更新</button>
   </div>
 </div>
@@ -715,7 +715,7 @@ function clearCoverHistory(btn) {
 function showCoverFirst() {
   const groups = coverState[coverStep];
   if (groups.length < 2) return;
-  const idx = [...Array(groups.length).keys()].sort(() => Math.random() - 0.5);
+  const idx = shuffleArr([...Array(groups.length).keys()]);
   const text = `先開打：第 ${idx[0]+1} 組 vs 第 ${idx[1]+1} 組`;
   const el = document.getElementById("coverFirstText");
   el.textContent = text;
@@ -852,7 +852,7 @@ function applyManualResultEditor() {
   html += `<button type="button" class="secondary small" onclick="showManualResultEditor()">重新手動填寫</button>`;
   document.getElementById("result").innerHTML = html;
   const labels = Array.from({length: groups}, (_,i) => String.fromCharCode(65+i));
-  const shuffledFirst = [...labels].sort(() => Math.random() - 0.5);
+  const shuffledFirst = shuffleArr(labels);
   currentManualFirst = labels.length >= 2 ? `先開打：${shuffledFirst[0]} 組 vs ${shuffledFirst[1]} 組` : "";
   document.getElementById("manualFirstArea").innerHTML = `<button class="secondary small" onclick="showManualFirst()">顯示哪組先打</button><div id="manualFirstText" class="hidden" style="margin-top:8px; padding:8px; background:#1e293b; border-radius:8px;"></div>`;
   saveManualToHistory(true);
@@ -875,7 +875,7 @@ function generate() {
     let best = null;
     let bestScore = Infinity;
     do {
-      const shuffled = [...people].sort(() => Math.random() - 0.5);
+      const shuffled = shuffleArr(people);
       result = Array.from({length:numGroups}, () => []);
       shuffled.forEach((p,i) => result[i % numGroups].push(p));
       attempts++;
@@ -914,7 +914,7 @@ function generate() {
   document.getElementById("result").innerHTML = html;
 
   const labels = Array.from({length:numGroups}, (_,i) => String.fromCharCode(65+i));
-  const shuffledFirst = [...labels].sort(() => Math.random() - 0.5);
+  const shuffledFirst = shuffleArr(labels);
   currentManualFirst = labels.length >= 2 ? `先開打：${shuffledFirst[0]} 組 vs ${shuffledFirst[1]} 組` : "";
   document.getElementById("manualFirstArea").innerHTML = `<button class="secondary small" onclick="showManualFirst()">顯示哪組先打</button><div id="manualFirstText" class="hidden" style="margin-top:8px; padding:8px; background:#1e293b; border-radius:8px;"></div>`;
 
@@ -1085,7 +1085,7 @@ function showQuickResults() {
   document.getElementById("curtainArea").classList.add("hidden");
   const groups = labels.map(l => [l + " 組", ...groupsMap[l].map(n => "第"+n+"位")]);
   const firstLabels = [...new Set(quickAssignments)].sort();
-  const firstShuffled = [...firstLabels].sort(() => Math.random() - 0.5);
+  const firstShuffled = shuffleArr(firstLabels);
   window.currentQuickFirst = firstLabels.length >= 2 ? `先開打：${firstShuffled[0]} 組 vs ${firstShuffled[1]} 組` : "";
   saveHistory("快速分組", groups, window.currentQuickFirst);
 }
@@ -1163,7 +1163,7 @@ function applyManualRotateEditor() {
 function confirmRotate() {
   if (rotatePeople.length < 2) { alert("請先新增人員"); return; }
   const numGroups = parseInt(document.getElementById("rGroups").value) || 3;
-  const shuffled = [...rotatePeople].sort(() => Math.random() - 0.5);
+  const shuffled = shuffleArr(rotatePeople);
   rotateGroupsData = Array.from({length:numGroups}, () => []);
   shuffled.forEach((p,i) => rotateGroupsData[i % numGroups].push({...p}));
   renderRotateGroups();
@@ -1202,7 +1202,7 @@ function doRotate(dir) {
 function showRotateFirst() {
   const labels = rotateGroupsData.map((_,i) => String.fromCharCode(65+i));
   if (labels.length < 2) return;
-  const shuffled = [...labels].sort(() => Math.random() - 0.5);
+  const shuffled = shuffleArr(labels);
   const text = `先開打：${shuffled[0]} 組 vs ${shuffled[1]} 組`;
   document.getElementById("rotateFirst").innerHTML = `<div style="margin-top:8px; padding:8px; background:#1e293b; border-radius:8px;">${text}</div>`;
   return text;
@@ -1554,7 +1554,17 @@ function renderRosterList() {
 }
 
 
-const APP_VERSION = "1.3.5";
+
+function shuffleArr(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+const APP_VERSION = "1.3.6";
 
 async function checkUpdate() {
   const btn = document.querySelector('button[onclick="checkUpdate()"]');
