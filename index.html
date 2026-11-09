@@ -56,7 +56,7 @@ button.small { padding:6px 10px; font-size:0.85rem; }
     <p>點右上角 ☰ 選擇功能</p>
   </div>
   <div style="margin-top:24px; text-align:center;">
-    <p id="appVersionLabel" style="font-size:0.85rem; color:var(--text-dim); margin-bottom:8px;">版本 v1.3.4</p>
+    <p id="appVersionLabel" style="font-size:0.85rem; color:var(--text-dim); margin-bottom:8px;">版本 v1.3.5</p>
     <button class="secondary" onclick="checkUpdate()" style="width:100%;">檢查更新</button>
   </div>
 </div>
@@ -1272,14 +1272,20 @@ function addRacket() {
   document.getElementById("racketGrip").value = "";
   saveRackets();
   renderRackets();
+  setTimeout(() => {
+    const el = document.getElementById("newStr0");
+    if (el) {
+      el.classList.remove("hidden");
+      el.scrollIntoView({behavior:"smooth", block:"center"});
+    }
+  }, 50);
 }
 
 function addString(i) {
   const str = document.getElementById("str"+i).value.trim();
   const tension = document.getElementById("ten"+i).value;
   const date = document.getElementById("date"+i).value || new Date().toISOString().slice(0,10);
-  // allow saving even if only date is set; empty means user can skip via 先不填
-  if (!str && !tension && !date) {
+  if (!str && !tension) {
     document.getElementById("newStr"+i).classList.add("hidden");
     return;
   }
@@ -1308,7 +1314,7 @@ function renderRackets() {
           const broken = !!end;
           const isLatest = si === 0;
           return `<div style="font-size:0.85rem; color:var(--text-dim); padding:4px 0; border-bottom:1px solid var(--border);">
-            ${dateText}　${s.string || ""}　${s.tension ? s.tension+"磅" : ""}${broken ? "　<span style=\"color:#ef4444;\">已斷線</span>" : ""}
+            ${s.string || ""}　${s.tension ? s.tension+"磅" : ""}　${dateText}${broken ? "　<span style=\"color:#ef4444;\">已斷線</span>" : ""}
             ${isLatest && !broken ? `<button type="button" class="small" style="background:#ef4444; margin-left:8px;" onclick="breakString(${i})">斷線</button>` : ""}
           </div>`;
         }).join("")}
@@ -1548,7 +1554,7 @@ function renderRosterList() {
 }
 
 
-const APP_VERSION = "1.3.4";
+const APP_VERSION = "1.3.5";
 
 async function checkUpdate() {
   const btn = document.querySelector('button[onclick="checkUpdate()"]');
